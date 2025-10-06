@@ -205,3 +205,20 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+# --- FruitBid custom ignores ---
+# Ignore local database and secret files
+*.db
+*.sqlite3
+
+# Ignore macOS system files
+.DS_Store
+
+# Ignore Streamlit local folders
+.streamlit/
+
+# Ignore backup or temp scripts
+*_backup.py
+
+# Ignore virtual environment
+venv/
+FruitBidApp/.streamlit/secrets.toml
