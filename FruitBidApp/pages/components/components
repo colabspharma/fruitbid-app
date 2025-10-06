@@ -1,0 +1,14 @@
+import streamlit as st
+
+def render_sidebar():
+    """Reusable sidebar for all logged-in pages."""
+    st.sidebar.title("🍇 FruitBid")
+    st.sidebar.markdown(f"**👤 {st.session_state.phone}**")
+    st.sidebar.markdown("---")
+
+    if st.sidebar.button("🚪 Logout"):
+        st.session_state.logged_in = False
+        st.session_state.otp_sent = False
+        st.session_state.phone = ""
+        st.info("You’ve been logged out successfully.")
+        st.switch_page("app_web.py")
