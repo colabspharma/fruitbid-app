@@ -70,6 +70,70 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================
+# 🎨 UI Components — Buttons, Cards, Inputs
+# =====================================================
+st.markdown("""
+<style>
+
+/* 🌱 Buttons */
+div.stButton > button {
+    background: linear-gradient(90deg, #26a69a, #80cbc4);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 0.6rem 1.2rem;
+    font-weight: 600;
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0px 3px 10px rgba(38, 166, 154, 0.4);
+}
+div.stButton > button:hover {
+    background: linear-gradient(90deg, #00796b, #4db6ac);
+    transform: translateY(-2px);
+    box-shadow: 0px 6px 12px rgba(0, 121, 107, 0.3);
+}
+
+/* 🍏 Input fields */
+input, textarea, select {
+    border-radius: 8px !important;
+    border: 1px solid #b2dfdb !important;
+    background-color: #ffffff !important;
+    color: #004d40 !important;
+}
+input:focus, textarea:focus, select:focus {
+    border: 1px solid #26a69a !important;
+    box-shadow: 0 0 0 3px rgba(38, 166, 154, 0.2) !important;
+    outline: none !important;
+}
+
+/* 🧺 Expanders */
+.streamlit-expanderHeader {
+    font-weight: 700;
+    color: #004d40;
+    background-color: rgba(224, 242, 241, 0.6);
+    border-radius: 10px;
+}
+
+/* 🍇 Cards or containers */
+.block-container {
+    padding: 2rem 3rem;
+}
+[data-testid="stVerticalBlock"] > div {
+    background-color: rgba(255,255,255,0.7);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+}
+
+/* ✨ Misc tweaks */
+h2, h3 {
+    color: #00695c !important;
+    font-weight: 700 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# =====================================================
 # ✅ PAGE CONFIG (safe — only when running main app)
 # =====================================================
 if "page_configured" not in st.session_state:
@@ -427,3 +491,13 @@ def main():
 # =====================================================
 if __name__ == "__main__":
     main()
+
+# =====================================================
+# 🍎 Footer (subtle watermark)
+# =====================================================
+st.markdown("""
+<hr style='margin-top:2rem; opacity:0.2;'>
+<p style='text-align:center; color:#00695c; font-size:0.9rem;'>
+Built with ❤️ using Streamlit — <b>FruitBid App</b>
+</p>
+""", unsafe_allow_html=True)
