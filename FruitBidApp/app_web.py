@@ -244,14 +244,21 @@ def fetch_all(query, params=()):
     rows = c.fetchall()
     conn.close()
     return rows
+import os
+import sqlite3
+
 # =====================================================
-# 🗄️ DATABASE HELPERS (Streamlit Cloud Safe)
+# 🗄️ DATABASE PATH (Works on both local + Streamlit Cloud)
 # =====================================================
-DB_PATH = os.path.join("/app", "fruitbid.db")
+if os.environ.get("STREAMLIT_RUNTIME") == "true":
+    # Streamlit Cloud environment
+    DB_PATH = os.path.join("/app", "fruitbid.db")
+else:
+    # Local environment (Mac / Windows / Linux)
+    DB_PATH = os.path.join(os.path.dirname(__file__), "fruitbid.db")
 
 def get_connection():
     return sqlite3.connect(DB_PATH, check_same_thread=False)
-
 
 # =====================================================
 # 🌐 MAIN APP FUNCTION
