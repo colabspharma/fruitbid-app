@@ -1,149 +1,31 @@
-# =====================================================
-# 🍎 app_web.py — Main FruitBid App Entry Point
-# =====================================================
-
-import os
+# app_web.py
+import streamlit as st
 import sqlite3
 from datetime import datetime
-import streamlit as st
 
-# =====================================================
-# 🍃 Sky Blue Theme with Animated Falling Leaves
-# =====================================================
-def main():
-    # run DB init/seed only once per session
-    if "db_initialized" not in st.session_state:
-        reset_database()        # optional – remove this if you don't want reset on each run
-        init_db()
-        initialize_items()
-        st.session_state["db_initialized"] = True
-
-    # rest of main...
-    ...
-
-# =====================================================
-# 🎨 UI Components — Buttons, Cards, Inputs
-# =====================================================
-st.markdown("""
-<style>
-
-/* 🌱 Buttons */
-div.stButton > button {
-    background: linear-gradient(90deg, #26a69a, #80cbc4);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    padding: 0.6rem 1.2rem;
-    font-weight: 600;
-    transition: all 0.3s ease-in-out;
-    box-shadow: 0px 3px 10px rgba(38, 166, 154, 0.4);
-}
-div.stButton > button:hover {
-    background: linear-gradient(90deg, #00796b, #4db6ac);
-    transform: translateY(-2px);
-    box-shadow: 0px 6px 12px rgba(0, 121, 107, 0.3);
-}
-
-/* 🍏 Input fields */
-input, textarea, select {
-    border-radius: 8px !important;
-    border: 1px solid #b2dfdb !important;
-    background-color: #ffffff !important;
-    color: #004d40 !important;
-}
-input:focus, textarea:focus, select:focus {
-    border: 1px solid #26a69a !important;
-    box-shadow: 0 0 0 3px rgba(38, 166, 154, 0.2) !important;
-    outline: none !important;
-}
-
-/* 🧺 Expanders */
-.streamlit-expanderHeader {
-    font-weight: 700;
-    color: #004d40;
-    background-color: rgba(224, 242, 241, 0.6);
-    border-radius: 10px;
-}
-
-/* 🍇 Cards or containers */
-.block-container {
-    padding: 2rem 3rem;
-}
-[data-testid="stVerticalBlock"] > div {
-    background-color: rgba(255,255,255,0.7);
-    border-radius: 16px;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.05);
-}
-
-/* ✨ Misc tweaks */
-h2, h3 {
-    color: #00695c !important;
-    font-weight: 700 !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# =====================================================
-# ✅ PAGE CONFIG (safe — only when running main app)
-# =====================================================
-if "page_configured" not in st.session_state:
-    try:
-        st.set_page_config(
-            page_title="🍎 FruitBid App",
-            page_icon="🍇",
-            layout="wide",
-            initial_sidebar_state="expanded"
-        )
-        st.session_state["page_configured"] = True
-    except st.errors.StreamlitAPIException:
-        # Avoid crash if already called in another page
-        pass
-
-
-# =====================================================
-# 📂 IMPORTS
-# =====================================================
-try:
-    from components.sidebar import render_sidebar
-except ModuleNotFoundError:
-    st.warning("⚠️ Sidebar missing — using fallback menu.")
-    def render_sidebar():
-        with st.sidebar:
-            return st.radio(
-                "Navigate:",
-                ["🏠 Home", "🏪 Marketplace", "💼 My Bids", "⚙️ Add Lot (Admin)"]
-            )
-
-
-# =====================================================
-# 📦 DATABASE SETUP
-# =====================================================
+# --------------------------
+# DATABASE SETUP
+# --------------------------
 def init_db():
     conn = sqlite3.connect("fruitbid.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
+    c = conn.cursor()
+    c.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
-            phone TEXT,
-            verified INTEGER DEFAULT 0
+            phone TEXT
         )
     """)
-
-    cursor.execute("""
+    c.execute("""
         CREATE TABLE IF NOT EXISTS lots (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            item_name TEXT,
+            fruit_name TEXT,
             quantity TEXT,
             base_price REAL,
             date_added TEXT
         )
     """)
-
-    cursor.execute("""
+    c.execute("""
         CREATE TABLE IF NOT EXISTS bids (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_name TEXT,
@@ -152,304 +34,146 @@ def init_db():
             timestamp TEXT
         )
     """)
-
     conn.commit()
     conn.close()
 
-
-# =====================================================
-# 🍎 INITIAL SAMPLE DATA (seed for demo)
-# =====================================================
-
-def reset_database():
-    """Force delete any old or corrupted DB file."""
-    db_path = "fruitbid.db"
-    if os.path.exists(db_path):
-        os.remove(db_path)
-        st.warning("🧹 Old database deleted. Fresh one will be created.")
-
-# =====================================================
-# 📂 IMPORTS
-# =====================================================
-try:
-    from components.sidebar import render_sidebar
-except ModuleNotFoundError:
-    st.warning("⚠️ Sidebar missing — using fallback menu.")
-    def render_sidebar():
-        with st.sidebar:
-            return st.radio(
-                "Navigate:",
-                ["🏠 Home", "🏪 Marketplace", "💼 My Bids", "⚙️ Add Lot (Admin)"]
-            )
-
-
-# =====================================================
-# 📦 DATABASE SETUP
-# =====================================================
-def init_db():
+# --------------------------
+# HELPER FUNCTIONS
+# --------------------------
+def add_user(name, phone):
     conn = sqlite3.connect("fruitbid.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            phone TEXT,
-            verified INTEGER DEFAULT 0
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS lots (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            item_name TEXT,
-            quantity TEXT,
-            base_price REAL,
-            date_added TEXT
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS bids (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_name TEXT,
-            lot_id INTEGER,
-            bid_amount REAL,
-            timestamp TEXT
-        )
-    """)
-
+    c = conn.cursor()
+    c.execute("INSERT INTO users (name, phone) VALUES (?, ?)", (name, phone))
     conn.commit()
     conn.close()
 
-
-# =====================================================
-# 🍎 INITIAL SAMPLE DATA (seed for demo)
-# =====================================================
-
-def reset_database():
-    """Force delete any old or corrupted DB file."""
-    db_path = "fruitbid.db"
-    if os.path.exists(db_path):
-        os.remove(db_path)
-        st.warning("🧹 Old database deleted. Fresh one will be created.")
-
-
-
-def initialize_items():
-    """Initialize fruit lots with safety check."""
+def get_lots():
     conn = sqlite3.connect("fruitbid.db")
-    cursor = conn.cursor()
-
-    # Drop and recreate table if schema mismatch or corruption occurs
-    try:
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS lots (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                item_name TEXT,
-                quantity TEXT,
-                base_price REAL,
-                date_added TEXT
-            )
-        """)
-        conn.commit()
-
-        # Test select
-        cursor.execute("SELECT COUNT(*) FROM lots")
-        count = cursor.fetchone()[0]
-
-    except sqlite3.OperationalError as e:
-        st.warning(f"⚠️ Database issue detected: {e}. Recreating 'lots' table...")
-        cursor.execute("DROP TABLE IF EXISTS lots")
-        cursor.execute("""
-            CREATE TABLE lots (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                item_name TEXT,
-                quantity TEXT,
-                base_price REAL,
-                date_added TEXT
-            )
-        """)
-        conn.commit()
-        count = 0
-
-    if count == 0:
-        st.info("🌱 Seeding sample fruit lots...")
-        sample_lots = [
-            ("Apples", "100 kg", 120.0, datetime.now().strftime("%Y-%m-%d")),
-            ("Bananas", "200 kg", 60.0, datetime.now().strftime("%Y-%m-%d")),
-            ("Mangoes", "150 kg", 180.0, datetime.now().strftime("%Y-%m-%d")),
-            ("Oranges", "180 kg", 90.0, datetime.now().strftime("%Y-%m-%d")),
-        ]
-        cursor.executemany(
-            "INSERT INTO lots (item_name, quantity, base_price, date_added) VALUES (?, ?, ?, ?)",
-            sample_lots
-        )
-        conn.commit()
-
+    c = conn.cursor()
+    c.execute("SELECT * FROM lots")
+    lots = c.fetchall()
     conn.close()
+    return lots
 
-
-
-# =====================================================
-# 🧩 DATABASE HELPERS
-# =====================================================
-def execute_query(query, params=()):
+def add_lot(fruit_name, quantity, base_price):
     conn = sqlite3.connect("fruitbid.db")
-    cursor = conn.cursor()
-    cursor.execute(query, params)
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO lots (fruit_name, quantity, base_price, date_added) VALUES (?, ?, ?, ?)",
+        (fruit_name, quantity, base_price, datetime.now().strftime("%Y-%m-%d %H:%M"))
+    )
     conn.commit()
     conn.close()
 
-
-def fetch_all(query, params=()):
+def place_bid(user_name, lot_id, bid_amount):
     conn = sqlite3.connect("fruitbid.db")
-    cursor = conn.cursor()
-    cursor.execute(query, params)
-    results = cursor.fetchall()
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO bids (user_name, lot_id, bid_amount, timestamp) VALUES (?, ?, ?, ?)",
+        (user_name, lot_id, bid_amount, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    )
+    conn.commit()
     conn.close()
-    return results
 
+def get_bids_for_lot(lot_id):
+    conn = sqlite3.connect("fruitbid.db")
+    c = conn.cursor()
+    c.execute("SELECT user_name, bid_amount, timestamp FROM bids WHERE lot_id = ? ORDER BY bid_amount DESC", (lot_id,))
+    bids = c.fetchall()
+    conn.close()
+    return bids
 
-# =====================================================
-# 🌐 MAIN APP FUNCTION
-# =====================================================
+# --------------------------
+# MAIN APP
+# --------------------------
 def main():
-    # 🧹 Start fresh and initialize data
-    
+    st.set_page_config(page_title="🍉 FruitBid", layout="wide")
+    st.title("🍉 FruitBid — Local Farmer Marketplace")
+
     init_db()
-    initialize_items()
 
-
-    st.title("🍎 FruitBid — Fresh Produce, Fast Deals")
-
-
-    selected_page = render_sidebar()
+    # Sidebar navigation
+    menu = ["Home", "Marketplace", "My Bids", "Add Lot (Admin)"]
+    choice = st.sidebar.selectbox("Navigate", menu)
 
     # --------------------------
-    # 🏠 HOME PAGE
+    # HOME PAGE (TEMPORARY LOGIN SKIPPED)
     # --------------------------
-    if selected_page == "🏠 Home":
+    if choice == "Home":
         st.subheader("👋 Welcome to FruitBid")
-        st.info("OTP login temporarily disabled for testing.")
-
+        st.info("OTP login is disabled temporarily for testing.")
         name = st.text_input("Your Name")
         phone = st.text_input("Phone Number (for records only)", max_chars=10)
-
         if st.button("Enter Marketplace"):
-            if not name.strip():
+            if name.strip() == "":
                 st.warning("Please enter your name.")
             else:
-                st.session_state["user_name"] = name.strip()
-                st.session_state["phone"] = phone.strip()
-                st.success(f"Welcome, {name}! Use the sidebar to explore the Marketplace.")
-
+                st.session_state["user_name"] = name
+                st.session_state["phone"] = phone
+                st.success(f"Welcome, {name}! Use the sidebar to browse the Marketplace.")
+    
     # --------------------------
-    # 🏪 MARKETPLACE PAGE
+    # MARKETPLACE PAGE
     # --------------------------
-    elif selected_page == "🏪 Marketplace":
+    elif choice == "Marketplace":
         st.subheader("🏪 Marketplace — Active Lots")
 
-        lots = fetch_all(
-            "SELECT id, item_name, quantity, base_price, date_added FROM lots ORDER BY id DESC"
-        )
-
+        lots = get_lots()
         if not lots:
             st.warning("No lots available yet.")
         else:
-            for lot_id, item_name, quantity, base_price, date_added in lots:
-                with st.expander(f"{item_name} ({quantity}) — Base ₹{base_price}"):
+            for lot in lots:
+                lot_id, fruit_name, quantity, base_price, date_added = lot
+                with st.expander(f"{fruit_name} ({quantity}) — Base ₹{base_price}"):
                     st.write(f"📅 Added: {date_added}")
-
-                    bid_amount = st.number_input(
-                        f"Enter your bid for {item_name} (₹)",
-                        min_value=float(base_price),
-                        key=f"bid_{lot_id}"
-                    )
-
-                    if st.button(f"💰 Submit Bid for {item_name}", key=f"submit_{lot_id}"):
+                    st.write("💬 Place your bid below:")
+                    bid_amount = st.number_input("Enter your bid (₹)", min_value=base_price, key=f"bid_{lot_id}")
+                    if st.button(f"Submit Bid for Lot {lot_id}"):
                         user_name = st.session_state.get("user_name", "Guest")
-                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        execute_query(
-                            "INSERT INTO bids (user_name, lot_id, bid_amount, timestamp) VALUES (?, ?, ?, ?)",
-                            (user_name, lot_id, bid_amount, timestamp)
-                        )
-                        st.success(f"✅ ₹{bid_amount} bid placed on {item_name}!")
-
-                    # Show top 3 bids
-                    top_bids = fetch_all(
-                        """
-                        SELECT user_name, bid_amount, timestamp
-                        FROM bids WHERE lot_id = ?
-                        ORDER BY bid_amount DESC LIMIT 3
-                        """,
-                        (lot_id,)
-                    )
-                    if top_bids:
-                        st.write("📊 Top Bids:")
-                        for user, amount, ts in top_bids:
-                            st.write(f"• {user} — ₹{amount} ({ts})")
-
+                        place_bid(user_name, lot_id, bid_amount)
+                        st.success(f"✅ Bid placed successfully for ₹{bid_amount} on {fruit_name}!")
+                    bids = get_bids_for_lot(lot_id)
+                    if bids:
+                        st.write("📊 Current Top Bids:")
+                        for b in bids[:3]:
+                            st.write(f"• {b[0]} — ₹{b[1]} ({b[2]})")
+    
     # --------------------------
-    # 💼 MY BIDS PAGE
+    # MY BIDS PAGE
     # --------------------------
-    elif selected_page == "💼 My Bids":
+    elif choice == "My Bids":
         st.subheader("💼 My Bids")
-
-        user_name = st.session_state.get("user_name")
+        user_name = st.session_state.get("user_name", None)
         if not user_name:
             st.warning("Please enter your name on the Home page first.")
         else:
-            my_bids = fetch_all(
-                """
-                SELECT lots.item_name, bids.bid_amount, bids.timestamp
-                FROM bids
-                JOIN lots ON bids.lot_id = lots.id
-                WHERE bids.user_name = ?
-                ORDER BY bids.timestamp DESC
-                """,
-                (user_name,)
-            )
-
-            if not my_bids:
+            conn = sqlite3.connect("fruitbid.db")
+            c = conn.cursor()
+            c.execute("SELECT lot_id, bid_amount, timestamp FROM bids WHERE user_name = ?", (user_name,))
+            rows = c.fetchall()
+            conn.close()
+            if not rows:
                 st.info("No bids placed yet.")
             else:
-                for item, amount, ts in my_bids:
-                    st.write(f"🍇 {item} — ₹{amount} at {ts}")
+                for row in rows:
+                    lot_id, bid_amount, timestamp = row
+                    st.write(f"Lot #{lot_id} — ₹{bid_amount} at {timestamp}")
 
     # --------------------------
-    # ⚙️ ADMIN PAGE
+    # ADMIN PAGE
     # --------------------------
-    elif selected_page == "⚙️ Add Lot (Admin)":
+    elif choice == "Add Lot (Admin)":
         st.subheader("⚙️ Admin: Add a New Lot")
-
-        item_name = st.text_input("Fruit Name")
+        fruit_name = st.text_input("Fruit Name")
         quantity = st.text_input("Quantity (e.g. 10 kg, 1 box)")
         base_price = st.number_input("Base Price (₹)", min_value=1.0, step=0.5)
-
         if st.button("Add Lot"):
-            if item_name and quantity:
-                execute_query(
-                    "INSERT INTO lots (item_name, quantity, base_price, date_added) VALUES (?, ?, ?, ?)",
-                    (item_name, quantity, base_price, datetime.now().strftime("%Y-%m-%d"))
-                )
-                st.success(f"✅ Added new lot: {item_name} ({quantity}) at ₹{base_price}")
+            if fruit_name and quantity:
+                add_lot(fruit_name, quantity, base_price)
+                st.success(f"✅ Added new lot: {fruit_name} ({quantity}) at ₹{base_price}")
             else:
                 st.warning("Please fill in all fields.")
 
-
-# =====================================================
-# 🚀 RUN THE APP
-# =====================================================
+# --------------------------
 if __name__ == "__main__":
     main()
-
-# =====================================================
-# 🍎 Footer (subtle watermark)
-# =====================================================
-st.markdown("""
-<hr style='margin-top:2rem; opacity:0.2;'>
-<p style='text-align:center; color:#00695c; font-size:0.9rem;'>
-Built with ❤️ using Streamlit — <b>FruitBid App</b>
-</p>
-""", unsafe_allow_html=True)
