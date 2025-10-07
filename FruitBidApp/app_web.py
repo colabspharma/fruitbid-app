@@ -10,64 +10,16 @@ import streamlit as st
 # =====================================================
 # 🍃 Sky Blue Theme with Animated Falling Leaves
 # =====================================================
-st.markdown("""
-<style>
-/* 🌤️ Background */
-[data-testid="stAppViewContainer"] {
-    background: linear-gradient(180deg, #a7e9ff 0%, #d9f7ff 100%) !important;
-    background-attachment: fixed !important;
-    overflow: hidden;
-}
+def main():
+    # run DB init/seed only once per session
+    if "db_initialized" not in st.session_state:
+        reset_database()        # optional – remove this if you don't want reset on each run
+        init_db()
+        initialize_items()
+        st.session_state["db_initialized"] = True
 
-/* 🌿 Leaf animation */
-@keyframes fall {
-    0% { transform: translateY(-10%) rotate(0deg); opacity: 1; }
-    100% { transform: translateY(110vh) rotate(360deg); opacity: 0.7; }
-}
-
-.leaf {
-    position: fixed;
-    top: -10%;
-    font-size: 1.8rem;
-    animation: fall linear infinite;
-    opacity: 0.9;
-}
-
-/* Random motion across screen */
-.leaf:nth-child(1) { left: 5%; animation-duration: 7s; animation-delay: 0s; }
-.leaf:nth-child(2) { left: 20%; animation-duration: 9s; animation-delay: 2s; }
-.leaf:nth-child(3) { left: 35%; animation-duration: 8s; animation-delay: 1s; }
-.leaf:nth-child(4) { left: 50%; animation-duration: 10s; animation-delay: 3s; }
-.leaf:nth-child(5) { left: 65%; animation-duration: 11s; animation-delay: 0s; }
-.leaf:nth-child(6) { left: 80%; animation-duration: 9s; animation-delay: 4s; }
-.leaf:nth-child(7) { left: 95%; animation-duration: 8s; animation-delay: 1s; }
-
-/* Sidebar styling */
-section[data-testid="stSidebar"] {
-    background-color: rgba(255, 255, 255, 0.9);
-    border-right: 2px solid #b2dfdb;
-    backdrop-filter: blur(6px);
-}
-
-/* Hide Streamlit footer */
-footer {visibility: hidden;}
-</style>
-
-<!-- 🍃 Animated leaves -->
-<div class="leaf">🍃</div>
-<div class="leaf">🍂</div>
-<div class="leaf">🍃</div>
-<div class="leaf">🍂</div>
-<div class="leaf">🍃</div>
-<div class="leaf">🍂</div>
-<div class="leaf">🍃</div>
-""", unsafe_allow_html=True)
-st.markdown("""
-<h1 style='text-align:center; color:#004d40; font-weight:800;
-    text-shadow: 2px 2px 10px #a7ffeb;'>
-<span style='color:#d50000;'>🍎</span> FruitBid — Fresh Produce, Fast Deals
-</h1>
-""", unsafe_allow_html=True)
+    # rest of main...
+    ...
 
 # =====================================================
 # 🎨 UI Components — Buttons, Cards, Inputs
@@ -364,7 +316,7 @@ def fetch_all(query, params=()):
 # =====================================================
 def main():
     # 🧹 Start fresh and initialize data
-    reset_database()
+    
     init_db()
     initialize_items()
 
