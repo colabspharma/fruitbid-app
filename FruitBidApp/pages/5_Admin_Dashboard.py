@@ -23,19 +23,33 @@ st.markdown("---")
 
 
 # =====================================================
-# 🔄 DATABASE RESET
+# 🔄 DATABASE RESET (Admin Tools)
 # =====================================================
 st.subheader("⚙️ Database Management")
 
-if st.button("🔄 Reset Database (Recreate Tables & Items)", type="primary"):
-    with st.spinner("Reinitializing database..."):
-        try:
-            init_db()
-            initialize_items()
-            st.success("✅ Database reinitialized successfully!")
-            st.balloons()
-        except Exception as e:
-            st.error(f"❌ Database reinitialization failed:\n\n{e}")
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("🧹 Reset Database (Delete Everything)"):
+        with st.spinner("Deleting old database and creating a new one..."):
+            try:
+                reset_database()
+                init_db()
+                initialize_items()
+                st.success("✅ Database fully reset and re-seeded with demo data!")
+                st.balloons()
+            except Exception as e:
+                st.error(f"❌ Database reset failed:\n\n{e}")
+
+with col2:
+    if st.button("🔄 Reinitialize Sample Items"):
+        with st.spinner("Adding or refreshing fruit lots..."):
+            try:
+                initialize_items()
+                st.success("✅ Sample fruit lots initialized successfully!")
+            except Exception as e:
+                st.error(f"❌ Initialization failed:\n\n{e}")
+
 
 
 # =====================================================
