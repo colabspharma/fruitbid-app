@@ -163,7 +163,7 @@ except ModuleNotFoundError:
 # =====================================================
 # 🗄️ DATABASE HELPERS
 # =====================================================
-DB_PATH = "fruitbid.db"
+DB_PATH = os.path.join("/app", "fruitbid.db")
 
 def get_connection():
     """Return a sqlite3 connection (threads allowed)."""
@@ -244,6 +244,13 @@ def fetch_all(query, params=()):
     rows = c.fetchall()
     conn.close()
     return rows
+# =====================================================
+# 🗄️ DATABASE HELPERS (Streamlit Cloud Safe)
+# =====================================================
+DB_PATH = os.path.join("/app", "fruitbid.db")
+
+def get_connection():
+    return sqlite3.connect(DB_PATH, check_same_thread=False)
 
 
 # =====================================================
