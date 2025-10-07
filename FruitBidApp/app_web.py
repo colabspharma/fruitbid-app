@@ -8,74 +8,65 @@ from datetime import datetime
 import streamlit as st
 
 # =====================================================
-# 🍃 Sky Blue Theme with Falling Leaves
+# 🍃 Sky Blue Theme with Animated Falling Leaves
 # =====================================================
 st.markdown("""
 <style>
-/* Sky blue background */
+/* 🌤️ Background */
 [data-testid="stAppViewContainer"] {
-    background: linear-gradient(180deg, #b3e5fc 0%, #e1f5fe 100%) !important;
+    background: linear-gradient(180deg, #a7e9ff 0%, #d9f7ff 100%) !important;
     background-attachment: fixed !important;
     overflow: hidden;
-    position: relative;
 }
 
-/* Title styling */
-h1 {
-    color: #004d40 !important; /* Dark bluish green */
-    font-weight: 800 !important;
-    text-align: center !important;
-    font-size: 2.4rem !important;
-    letter-spacing: -0.5px !important;
-    margin-bottom: 1rem !important;
-}
-
-/* Red apple glow */
-.apple-icon {
-    color: #e53935;
-    text-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
-}
-
-/* Sidebar */
-section[data-testid="stSidebar"] {
-    background-color: rgba(255,255,255,0.85);
-    border-right: 2px solid #b2dfdb;
-    backdrop-filter: blur(6px);
-}
-
-/* Remove footer */
-footer {visibility: hidden;}
-
-/* 🍃 Falling Leaves */
+/* 🌿 Leaf animation */
 @keyframes fall {
-    0% {transform: translateY(-10%) rotate(0deg); opacity: 1;}
-    100% {transform: translateY(120vh) rotate(360deg); opacity: 0.6;}
+    0% { transform: translateY(-10%) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(360deg); opacity: 0.7; }
 }
 
 .leaf {
     position: fixed;
     top: -10%;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     animation: fall linear infinite;
-    opacity: 0.8;
+    opacity: 0.9;
 }
 
-/* Randomized leaf positions and timings */
-.leaf:nth-child(1) {left: 10%; animation-duration: 8s; animation-delay: 0s;}
-.leaf:nth-child(2) {left: 25%; animation-duration: 10s; animation-delay: 2s;}
-.leaf:nth-child(3) {left: 40%; animation-duration: 9s; animation-delay: 1s;}
-.leaf:nth-child(4) {left: 55%; animation-duration: 11s; animation-delay: 3s;}
-.leaf:nth-child(5) {left: 70%; animation-duration: 12s; animation-delay: 0s;}
-.leaf:nth-child(6) {left: 85%; animation-duration: 9s; animation-delay: 4s;}
+/* Random motion across screen */
+.leaf:nth-child(1) { left: 5%; animation-duration: 7s; animation-delay: 0s; }
+.leaf:nth-child(2) { left: 20%; animation-duration: 9s; animation-delay: 2s; }
+.leaf:nth-child(3) { left: 35%; animation-duration: 8s; animation-delay: 1s; }
+.leaf:nth-child(4) { left: 50%; animation-duration: 10s; animation-delay: 3s; }
+.leaf:nth-child(5) { left: 65%; animation-duration: 11s; animation-delay: 0s; }
+.leaf:nth-child(6) { left: 80%; animation-duration: 9s; animation-delay: 4s; }
+.leaf:nth-child(7) { left: 95%; animation-duration: 8s; animation-delay: 1s; }
+
+/* Sidebar styling */
+section[data-testid="stSidebar"] {
+    background-color: rgba(255, 255, 255, 0.9);
+    border-right: 2px solid #b2dfdb;
+    backdrop-filter: blur(6px);
+}
+
+/* Hide Streamlit footer */
+footer {visibility: hidden;}
 </style>
 
-<!-- 🍃 Emoji leaves -->
+<!-- 🍃 Animated leaves -->
 <div class="leaf">🍃</div>
 <div class="leaf">🍂</div>
 <div class="leaf">🍃</div>
 <div class="leaf">🍂</div>
 <div class="leaf">🍃</div>
 <div class="leaf">🍂</div>
+<div class="leaf">🍃</div>
+""", unsafe_allow_html=True)
+st.markdown("""
+<h1 style='text-align:center; color:#004d40; font-weight:800;
+    text-shadow: 2px 2px 10px #a7ffeb;'>
+<span style='color:#d50000;'>🍎</span> FruitBid — Fresh Produce, Fast Deals
+</h1>
 """, unsafe_allow_html=True)
 
 # =====================================================
