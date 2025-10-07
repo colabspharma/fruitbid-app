@@ -1,38 +1,134 @@
 import streamlit as st
+import sqlite3
+from datetime import datetime
+from components.sidebar import render_sidebar
 
-# 🧩 Page setup
-st.set_page_config(page_title="My Bids", page_icon="💼", layout="wide")
+DB_PATH = "fruitbid.db"
 
-# 🔒 Login Guard
-if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("⚠️ Please log in first from the main page.")
-    st.stop()
+# ==========================
+# ⚙️ Page setup
+# ==========================
+st.set_page_config(page_title="💼 My Bids", page_icon="💼", layout="wide")
 
-# 🧭 Sidebar Navigation
-st.sidebar.title("🍇 FruitBid")
-st.sidebar.markdown(f"**👤 {st.session_state.phone}**")
-st.sidebar.markdown("---")
+# ==========================
+# 🔒 Developer Login (temporary)
+# ==========================
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = True
+    st.session_state.phone = "9999999999"
+    st.session_state.user_name = "Developer"
 
-if st.sidebar.button("🚪 Logout"):
-    st.session_state.logged_in = False
-    st.session_state.otp_sent = False
-    st.session_state.phone = ""
-    st.info("You’ve been logged out successfully.")
-    st.switch_page("app_web.py")
+# ==========================
+# 🧭 Sidebar
+# ==========================
+selected_page = render_sidebar()
 
-# 🌟 Page Content
+# ==========================
+# 🧱 Database Setup
+# ==========================
+def init_db():
+    """Ensure required tables exist with consistent column names."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS lots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_name TEXT,
+                quantity TEXT,
+                base_price REAL,
+                date_added TEXT
+            )
+        """)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS bids (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_phone TEXT,
+                item_name TEXT,
+                bid_price REAL,
+                bid_time TEXT
+            )
+        """)
+        conn.commit()
+
+init_db()
+
+# ==========================
+# 🌟 Page Header
+# ==========================
 st.title("💼 My Bids")
-st.write("Track your ongoing and past bids below:")
+st.write(f"Welcome back, **{st.session_state.user_name} ({st.session_state.phone})** 👋")
 st.markdown("---")
 
-# 📊 Example bid data
-bids = [
-    {"Fruit": "Mango (Alphonso)", "Your Bid": "₹135/kg", "Highest Bid": "₹135/kg", "Status": "🏆 Winning"},
-    {"Fruit": "Banana (Robusta)", "Your Bid": "₹47/kg", "Highest Bid": "₹48/kg", "Status": "❌ Outbid"},
-    {"Fruit": "Apple (Shimla)", "Your Bid": "₹158/kg", "Highest Bid": "₹158/kg", "Status": "🏆 Winning"},
-]
+# ==========================
+# 📦 Fetch Available Lots
+# ==========================
+def get_available_lots():
+    """Fetch all fruit lots from database."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("SELECT item_name, base_price FROM lots ORDER BY id DESC")
+        return c.fetchall()
 
-st.dataframe(bids, use_container_width=True)
+lots = get_available_lots()
+
+# ==========================
+# 💰 Place a New Bid
+# ==========================
+if lots:
+    st.subheader("💰 Place a New Bid")
+
+    item_options = [lot[0] for lot in lots]
+    selected_item = st.selectbox("Select Fruit Lot", item_options)
+    base_price = next(lot[1] for lot in lots if lot[0] == selected_item)
+
+    bid_price = st.number_input(
+        f"Enter your bid (₹/kg) — Base price ₹{base_price}", 
+        min_value=1, 
+        step=1
+    )
+
+    if st.button("✅ Submit Bid"):
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            c.execute("""
+                INSERT INTO bids (user_phone, item_name, bid_price, bid_time)
+                VALUES (?, ?, ?, ?)
+            """, (
+                st.session_state.phone,
+                selected_item,
+                bid_price,
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            ))
+            conn.commit()
+        st.success(f"🎉 Bid of ₹{bid_price}/kg placed for **{selected_item}** successfully!")
+else:
+    st.info("No fruit lots available yet. Please add some from the ⚙️ Admin Add Lot page.")
 
 st.markdown("---")
-st.caption("📊 Real-time bidding history and notifications coming soon!")
+
+# ==========================
+# 📊 Display User’s Bids
+# ==========================
+def get_user_bids(user_phone):
+    """Retrieve all bids placed by this user."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT item_name, bid_price, bid_time
+            FROM bids WHERE user_phone = ? ORDER BY id DESC
+        """, (user_phone,))
+        return c.fetchall()
+
+user_bids = get_user_bids(st.session_state.phone)
+
+st.subheader("📋 Your Bids")
+
+if user_bids:
+    st.dataframe(
+        [{"Fruit": f, "Bid (₹/kg)": b, "Time": t} for f, b, t in user_bids],
+        use_container_width=True
+    )
+else:
+    st.info("You haven’t placed any bids yet.")
+
+st.caption("💡 All bids are stored in `fruitbid.db` for persistence across sessions.")

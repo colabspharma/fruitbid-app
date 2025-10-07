@@ -1,43 +1,61 @@
 import streamlit as st
+import sqlite3
+from components.sidebar import render_sidebar
 
-# 🧩 Page setup
-st.set_page_config(page_title="Marketplace", page_icon="🏪", layout="wide")
+DB_PATH = "fruitbid.db"
 
-# 🔒 Login guard
-if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("⚠️ Please log in first from the main page.")
-    st.stop()
+# ==========================
+# ⚙️ Page setup
+# ==========================
+st.set_page_config(page_title="🏪 Marketplace", page_icon="🏪", layout="wide")
 
-# 🧭 Sidebar Navigation
-st.sidebar.title("🍇 FruitBid")
-st.sidebar.markdown(f"**👤 {st.session_state.phone}**")
-st.sidebar.markdown("---")
+# ==========================
+# 🔒 Login Guard (temporarily disabled for development)
+# ==========================
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = True
+    st.session_state.phone = "9999999999"
+    st.session_state.user_name = "Developer"
 
-if st.sidebar.button("🚪 Logout"):
-    st.session_state.logged_in = False
-    st.session_state.otp_sent = False
-    st.session_state.phone = ""
-    st.info("You’ve been logged out successfully.")
-    st.switch_page("app_web.py")
+# ==========================
+# 🧭 Sidebar
+# ==========================
+selected_page = render_sidebar()
 
-# 🏪 Marketplace Content
-st.title("🏪 Marketplace")
-st.write("Browse and bid on the freshest fruit lots!")
-
-# 📦 Example mock data
-lots = [
-    {"Fruit": "Mango (Alphonso)", "Base Price": "₹120/kg", "Highest Bid": "₹135/kg", "Time Left": "10 min"},
-    {"Fruit": "Banana (Robusta)", "Base Price": "₹45/kg", "Highest Bid": "₹48/kg", "Time Left": "30 min"},
-    {"Fruit": "Apple (Shimla)", "Base Price": "₹150/kg", "Highest Bid": "₹158/kg", "Time Left": "5 min"},
-]
-
-st.dataframe(lots, use_container_width=True)
-
+# ==========================
+# 🌟 Page Content
+# ==========================
+st.title("🏪 Fruit Marketplace")
+st.write(f"Welcome, **{st.session_state.user_name} ({st.session_state.phone})** 👋")
 st.markdown("---")
 
-# 💰 Bidding Interface
-selected = st.selectbox("Select a fruit to bid on", [l["Fruit"] for l in lots])
-bid = st.number_input("Enter your bid (₹/kg)", min_value=1, step=1)
+# ==========================
+# 🧺 Load Lots from Database
+# ==========================
+def fetch_lots():
+    """Retrieve all available lots from DB."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("SELECT fruit_name, quantity, base_price, date_added FROM lots ORDER BY id DESC")
+        return c.fetchall()
 
-if st.button("💰 Place Bid"):
-    st.success(f"✅ Your bid of ₹{bid}/kg for **{selected}** has been recorded!")
+lots = fetch_lots()
+
+# ==========================
+# 📦 Display Lots
+# ==========================
+if lots:
+    st.subheader("📦 Available Fruit Lots")
+
+    for idx, (fruit, quantity, base_price, date_added) in enumerate(lots, start=1):
+        with st.container():
+            st.markdown(f"### 🍎 {fruit}")
+            st.write(f"📦 Quantity: **{quantity}**")
+            st.write(f"💰 Base Price: **₹{base_price}/kg**")
+            st.caption(f"🕒 Added on {date_added}")
+            st.button(f"Place Bid on {fruit}", key=f"bid_{idx}")
+            st.markdown("---")
+else:
+    st.info("No fruit lots available yet. Please add some from the ⚙️ Admin Add Lot page.")
+
+st.caption("💡 All lots shown here are pulled live from your `fruitbid.db` file.")
