@@ -147,57 +147,47 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
 # =====================================================
-# 🍇 FLOATING FRUIT ANIMATION
+# 🍉 Floating Fruits — Safari-Compatible CSS Fix (2025)
 # =====================================================
-ccomponents.html(
+st.markdown(
     """
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <style>
-          body { margin:0; padding:0; overflow:hidden; background:transparent; }
-          .fruit {
-            position: fixed;
-            bottom: -10vh;
-            font-size: 2.2rem;
-            opacity: 0.9;
-            animation: floatUp linear infinite;
-            user-select: none;
-            pointer-events: none;
-            z-index: 9999;
-          }
-          @keyframes floatUp {
-            0% { transform: translateY(0) rotate(0deg); opacity: 0.9; }
-            50% { transform: translateY(-50vh) rotate(15deg); opacity: 1; }
-            100% { transform: translateY(-110vh) rotate(-15deg); opacity: 0; }
-          }
-        </style>
-      </head>
-      <body>
-        <script>
-          const fruits = ["🍎","🍊","🍋","🍇","🍌","🍉","🍒","🍓","🍍","🥭"];
-          function spawnFruit() {
-            const el = document.createElement("div");
-            el.className = "fruit";
-            el.textContent = fruits[Math.floor(Math.random()*fruits.length)];
-            el.style.left = (Math.random()*100) + "vw";
-            el.style.fontSize = (1.5 + Math.random()*1.5) + "rem";
-            el.style.animationDuration = (6 + Math.random()*5) + "s";
-            document.body.appendChild(el);
-            setTimeout(() => el.remove(), 10000);
-          }
-          setInterval(spawnFruit, 1000);
-          for (let i = 0; i < 15; i++) spawnFruit();
-        </script>
-      </body>
-    </html>
-    """,
-    height=120,  # was 0
-    scrolling=False,
-)
+    <style>
+    /* Anchor the animation container inside Streamlit root */
+    .stApp {
+        position: relative;
+        overflow: hidden;
+    }
+
+    @keyframes floatUp {
+        0% { transform: translateY(0vh) translateX(0vw); opacity: 1; }
+        50% { transform: translateY(-50vh) translateX(3vw) rotate(6deg); opacity: 0.9; }
+        100% { transform: translateY(-110vh) translateX(-3vw) rotate(-6deg); opacity: 0; }
+    }
+
+    .fruit-float {
+        position: absolute;
+        bottom: -10vh;
+        font-size: 2rem;
+        opacity: 0.85;
+        animation: floatUp linear infinite;
+        user-select: none;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    /* Create multiple fruits with different delays and left positions */
+    .fruit1 { left: 5%; animation-duration: 10s; animation-delay: 0s; }
+    .fruit2 { left: 20%; animation-duration: 12s; animation-delay: 2s; }
+    .fruit3 { left: 35%; animation-duration: 11s; animation-delay: 4s; }
+    .fruit4 { left: 50%; animation-duration: 13s; animation-delay: 1s; }
+    .fruit5 { left: 65%; animation-duration: 9s;  animation-delay: 3s; }
+    .fruit6 { left: 80%; animation-duration: 12s; animation-delay: 5s; }
+    </style>
+
+    <div class="fruit-float fruit1">🍎</div>
+    <div class="fruit-float fruit2">🍊</div>
+    <div class="frui
 
 
 
