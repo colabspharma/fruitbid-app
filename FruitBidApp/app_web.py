@@ -2,9 +2,10 @@
 # 🍎 app_web.py — Main FruitBid App Entry Point
 # =====================================================
 
-import streamlit as st
+import os
 import sqlite3
 from datetime import datetime
+import streamlit as st
 
 # =====================================================
 # ✅ PAGE CONFIG (safe — only when running main app)
@@ -81,12 +82,121 @@ def init_db():
 # =====================================================
 # 🍎 INITIAL SAMPLE DATA (seed for demo)
 # =====================================================
-def initialize_items():
+
+def reset_database():
+    """Force delete any old or corrupted DB file."""
+    db_path = "fruitbid.db"
+    if os.path.exists(db_path):
+        os.remove(db_path)
+        st.warning("🧹 Old database deleted. Fresh one will be created.")
+
+# =====================================================
+# 📂 IMPORTS
+# =====================================================
+try:
+    from components.sidebar import render_sidebar
+except ModuleNotFoundError:
+    st.warning("⚠️ Sidebar missing — using fallback menu.")
+    def render_sidebar():
+        with st.sidebar:
+            return st.radio(
+                "Navigate:",
+                ["🏠 Home", "🏪 Marketplace", "💼 My Bids", "⚙️ Add Lot (Admin)"]
+            )
+
+
+# =====================================================
+# 📦 DATABASE SETUP
+# =====================================================
+def init_db():
     conn = sqlite3.connect("fruitbid.db")
     cursor = conn.cursor()
 
-    cursor.execute("SELECT COUNT(*) FROM lots")
-    if cursor.fetchone()[0] == 0:
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            phone TEXT,
+            verified INTEGER DEFAULT 0
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS lots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_name TEXT,
+            quantity TEXT,
+            base_price REAL,
+            date_added TEXT
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS bids (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_name TEXT,
+            lot_id INTEGER,
+            bid_amount REAL,
+            timestamp TEXT
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+# =====================================================
+# 🍎 INITIAL SAMPLE DATA (seed for demo)
+# =====================================================
+
+def reset_database():
+    """Force delete any old or corrupted DB file."""
+    db_path = "fruitbid.db"
+    if os.path.exists(db_path):
+        os.remove(db_path)
+        st.warning("🧹 Old database deleted. Fresh one will be created.")
+
+
+
+def initialize_items():
+    """Initialize fruit lots with safety check."""
+    conn = sqlite3.connect("fruitbid.db")
+    cursor = conn.cursor()
+
+    # Drop and recreate table if schema mismatch or corruption occurs
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS lots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_name TEXT,
+                quantity TEXT,
+                base_price REAL,
+                date_added TEXT
+            )
+        """)
+        conn.commit()
+
+        # Test select
+        cursor.execute("SELECT COUNT(*) FROM lots")
+        count = cursor.fetchone()[0]
+
+    except sqlite3.OperationalError as e:
+        st.warning(f"⚠️ Database issue detected: {e}. Recreating 'lots' table...")
+        cursor.execute("DROP TABLE IF EXISTS lots")
+        cursor.execute("""
+            CREATE TABLE lots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_name TEXT,
+                quantity TEXT,
+                base_price REAL,
+                date_added TEXT
+            )
+        """)
+        conn.commit()
+        count = 0
+
+    if count == 0:
+        st.info("🌱 Seeding sample fruit lots...")
         sample_lots = [
             ("Apples", "100 kg", 120.0, datetime.now().strftime("%Y-%m-%d")),
             ("Bananas", "200 kg", 60.0, datetime.now().strftime("%Y-%m-%d")),
@@ -100,6 +210,7 @@ def initialize_items():
         conn.commit()
 
     conn.close()
+
 
 
 # =====================================================
@@ -126,8 +237,11 @@ def fetch_all(query, params=()):
 # 🌐 MAIN APP FUNCTION
 # =====================================================
 def main():
+    # 🧹 Start fresh and initialize data
+    reset_database()
     init_db()
     initialize_items()
+
 
     st.title("🍉 FruitBid — Local Farmer Marketplace")
 
