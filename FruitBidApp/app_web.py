@@ -1,102 +1,136 @@
-# app_web.py
+# =====================================================
+# 🍎 app_web.py — Main FruitBid App Entry Point
+# =====================================================
+
 import streamlit as st
 import sqlite3
 from datetime import datetime
-from components.sidebar import render_sidebar  # ✅ sidebar integration
 
-DB_PATH = "fruitbid.db"
+# =====================================================
+# ✅ PAGE CONFIG (safe — only when running main app)
+# =====================================================
+if "page_configured" not in st.session_state:
+    try:
+        st.set_page_config(
+            page_title="🍎 FruitBid App",
+            page_icon="🍇",
+            layout="wide",
+            initial_sidebar_state="expanded"
+        )
+        st.session_state["page_configured"] = True
+    except st.errors.StreamlitAPIException:
+        # Avoid crash if already called in another page
+        pass
 
-# ==========================
-# 🗃️ DATABASE SETUP
-# ==========================
+
+# =====================================================
+# 📂 IMPORTS
+# =====================================================
+try:
+    from components.sidebar import render_sidebar
+except ModuleNotFoundError:
+    st.warning("⚠️ Sidebar missing — using fallback menu.")
+    def render_sidebar():
+        with st.sidebar:
+            return st.radio(
+                "Navigate:",
+                ["🏠 Home", "🏪 Marketplace", "💼 My Bids", "⚙️ Add Lot (Admin)"]
+            )
+
+
+# =====================================================
+# 📦 DATABASE SETUP
+# =====================================================
 def init_db():
-    """Initialize SQLite tables if not already created."""
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                phone TEXT
-            )
-        """)
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS lots (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                fruit_name TEXT,
-                quantity TEXT,
-                base_price REAL,
-                date_added TEXT
-            )
-        """)
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS bids (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_name TEXT,
-                lot_id INTEGER,
-                bid_amount REAL,
-                timestamp TEXT
-            )
-        """)
+    conn = sqlite3.connect("fruitbid.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            phone TEXT,
+            verified INTEGER DEFAULT 0
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS lots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_name TEXT,
+            quantity TEXT,
+            base_price REAL,
+            date_added TEXT
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS bids (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_name TEXT,
+            lot_id INTEGER,
+            bid_amount REAL,
+            timestamp TEXT
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+# =====================================================
+# 🍎 INITIAL SAMPLE DATA (seed for demo)
+# =====================================================
+def initialize_items():
+    conn = sqlite3.connect("fruitbid.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM lots")
+    if cursor.fetchone()[0] == 0:
+        sample_lots = [
+            ("Apples", "100 kg", 120.0, datetime.now().strftime("%Y-%m-%d")),
+            ("Bananas", "200 kg", 60.0, datetime.now().strftime("%Y-%m-%d")),
+            ("Mangoes", "150 kg", 180.0, datetime.now().strftime("%Y-%m-%d")),
+            ("Oranges", "180 kg", 90.0, datetime.now().strftime("%Y-%m-%d")),
+        ]
+        cursor.executemany(
+            "INSERT INTO lots (item_name, quantity, base_price, date_added) VALUES (?, ?, ?, ?)",
+            sample_lots
+        )
         conn.commit()
 
-
-# ==========================
-# ⚙️ HELPER FUNCTIONS
-# ==========================
-def execute_query(query, params=(), fetch=False):
-    """Reusable DB helper for SELECT / INSERT / UPDATE."""
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute(query, params)
-        data = c.fetchall() if fetch else None
-        conn.commit()
-    return data
+    conn.close()
 
 
-def add_user(name, phone):
-    execute_query(
-        "INSERT INTO users (name, phone) VALUES (?, ?)",
-        (name, phone)
-    )
+# =====================================================
+# 🧩 DATABASE HELPERS
+# =====================================================
+def execute_query(query, params=()):
+    conn = sqlite3.connect("fruitbid.db")
+    cursor = conn.cursor()
+    cursor.execute(query, params)
+    conn.commit()
+    conn.close()
 
 
-def get_lots():
-    return execute_query("SELECT * FROM lots", fetch=True)
+def fetch_all(query, params=()):
+    conn = sqlite3.connect("fruitbid.db")
+    cursor = conn.cursor()
+    cursor.execute(query, params)
+    results = cursor.fetchall()
+    conn.close()
+    return results
 
 
-def add_lot(fruit_name, quantity, base_price):
-    execute_query(
-        "INSERT INTO lots (fruit_name, quantity, base_price, date_added) VALUES (?, ?, ?, ?)",
-        (fruit_name, quantity, base_price, datetime.now().strftime("%Y-%m-%d %H:%M"))
-    )
-
-
-def place_bid(user_name, lot_id, bid_amount):
-    execute_query(
-        "INSERT INTO bids (user_name, lot_id, bid_amount, timestamp) VALUES (?, ?, ?, ?)",
-        (user_name, lot_id, bid_amount, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    )
-
-
-def get_bids_for_lot(lot_id):
-    return execute_query(
-        "SELECT user_name, bid_amount, timestamp FROM bids WHERE lot_id = ? ORDER BY bid_amount DESC",
-        (lot_id,),
-        fetch=True
-    )
-
-
-# ==========================
-# 🌐 MAIN APP
-# ==========================
+# =====================================================
+# 🌐 MAIN APP FUNCTION
+# =====================================================
 def main():
-    st.set_page_config(page_title="🍉 FruitBid", layout="wide")
+    init_db()
+    initialize_items()
+
     st.title("🍉 FruitBid — Local Farmer Marketplace")
 
-    init_db()
-
-    # Sidebar navigation (imported from components)
     selected_page = render_sidebar()
 
     # --------------------------
@@ -104,7 +138,7 @@ def main():
     # --------------------------
     if selected_page == "🏠 Home":
         st.subheader("👋 Welcome to FruitBid")
-        st.info("OTP login is temporarily disabled for testing.")
+        st.info("OTP login temporarily disabled for testing.")
 
         name = st.text_input("Your Name")
         phone = st.text_input("Phone Number (for records only)", max_chars=10)
@@ -123,31 +157,45 @@ def main():
     elif selected_page == "🏪 Marketplace":
         st.subheader("🏪 Marketplace — Active Lots")
 
-        lots = get_lots()
+        lots = fetch_all(
+            "SELECT id, item_name, quantity, base_price, date_added FROM lots ORDER BY id DESC"
+        )
+
         if not lots:
             st.warning("No lots available yet.")
         else:
-            for lot in lots:
-                lot_id, fruit_name, quantity, base_price, date_added = lot
-                with st.expander(f"{fruit_name} ({quantity}) — Base ₹{base_price}"):
+            for lot_id, item_name, quantity, base_price, date_added in lots:
+                with st.expander(f"{item_name} ({quantity}) — Base ₹{base_price}"):
                     st.write(f"📅 Added: {date_added}")
 
                     bid_amount = st.number_input(
-                        f"Enter your bid for {fruit_name} (₹)",
-                        min_value=base_price,
+                        f"Enter your bid for {item_name} (₹)",
+                        min_value=float(base_price),
                         key=f"bid_{lot_id}"
                     )
 
-                    if st.button(f"💰 Submit Bid for {fruit_name}", key=f"submit_{lot_id}"):
+                    if st.button(f"💰 Submit Bid for {item_name}", key=f"submit_{lot_id}"):
                         user_name = st.session_state.get("user_name", "Guest")
-                        place_bid(user_name, lot_id, bid_amount)
-                        st.success(f"✅ ₹{bid_amount} bid placed on {fruit_name}!")
+                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        execute_query(
+                            "INSERT INTO bids (user_name, lot_id, bid_amount, timestamp) VALUES (?, ?, ?, ?)",
+                            (user_name, lot_id, bid_amount, timestamp)
+                        )
+                        st.success(f"✅ ₹{bid_amount} bid placed on {item_name}!")
 
-                    bids = get_bids_for_lot(lot_id)
-                    if bids:
+                    # Show top 3 bids
+                    top_bids = fetch_all(
+                        """
+                        SELECT user_name, bid_amount, timestamp
+                        FROM bids WHERE lot_id = ?
+                        ORDER BY bid_amount DESC LIMIT 3
+                        """,
+                        (lot_id,)
+                    )
+                    if top_bids:
                         st.write("📊 Top Bids:")
-                        for b in bids[:3]:
-                            st.write(f"• {b[0]} — ₹{b[1]} ({b[2]})")
+                        for user, amount, ts in top_bids:
+                            st.write(f"• {user} — ₹{amount} ({ts})")
 
     # --------------------------
     # 💼 MY BIDS PAGE
@@ -159,16 +207,22 @@ def main():
         if not user_name:
             st.warning("Please enter your name on the Home page first.")
         else:
-            rows = execute_query(
-                "SELECT lot_id, bid_amount, timestamp FROM bids WHERE user_name = ?",
-                (user_name,),
-                fetch=True
+            my_bids = fetch_all(
+                """
+                SELECT lots.item_name, bids.bid_amount, bids.timestamp
+                FROM bids
+                JOIN lots ON bids.lot_id = lots.id
+                WHERE bids.user_name = ?
+                ORDER BY bids.timestamp DESC
+                """,
+                (user_name,)
             )
-            if not rows:
+
+            if not my_bids:
                 st.info("No bids placed yet.")
             else:
-                for lot_id, bid_amount, timestamp in rows:
-                    st.write(f"Lot #{lot_id} — ₹{bid_amount} at {timestamp}")
+                for item, amount, ts in my_bids:
+                    st.write(f"🍇 {item} — ₹{amount} at {ts}")
 
     # --------------------------
     # ⚙️ ADMIN PAGE
@@ -176,20 +230,23 @@ def main():
     elif selected_page == "⚙️ Add Lot (Admin)":
         st.subheader("⚙️ Admin: Add a New Lot")
 
-        fruit_name = st.text_input("Fruit Name")
+        item_name = st.text_input("Fruit Name")
         quantity = st.text_input("Quantity (e.g. 10 kg, 1 box)")
         base_price = st.number_input("Base Price (₹)", min_value=1.0, step=0.5)
 
         if st.button("Add Lot"):
-            if fruit_name and quantity:
-                add_lot(fruit_name, quantity, base_price)
-                st.success(f"✅ Added new lot: {fruit_name} ({quantity}) at ₹{base_price}")
+            if item_name and quantity:
+                execute_query(
+                    "INSERT INTO lots (item_name, quantity, base_price, date_added) VALUES (?, ?, ?, ?)",
+                    (item_name, quantity, base_price, datetime.now().strftime("%Y-%m-%d"))
+                )
+                st.success(f"✅ Added new lot: {item_name} ({quantity}) at ₹{base_price}")
             else:
                 st.warning("Please fill in all fields.")
 
 
-# ==========================
-# 🚀 RUN
-# ==========================
+# =====================================================
+# 🚀 RUN THE APP
+# =====================================================
 if __name__ == "__main__":
     main()

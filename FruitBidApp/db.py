@@ -1,268 +1,130 @@
+# db.py
 import sqlite3
-import streamlit as st
 from datetime import datetime
+import time
+
+DB_PATH = "fruitbid.db"
 
 # --------------------------
-# Constants
+# Safe Connection Handler
 # --------------------------
-DB_FILE = 'fruitbid.db'
-
-# Initial items configuration
-INITIAL_ITEMS = [
-    ('Apple', 100.0, 200.0),
-    ('Mosambi', 40.0, 60.0),
-    ('Banana', 30.0, 50.0),
-    ('Papaya', 40.0, 60.0),
-    ('Kiwi', 150.0, 250.0),
-    ('Dragon Fruit', 200.0, 300.0),
-    ('Pineapple', 50.0, 80.0),
-    ('Custard Apple', 80.0, 120.0),
-    ('Sapota', 50.0, 70.0)
-]
-
-# --------------------------
-# Database Connection
-# --------------------------
-@st.cache_resource
-def get_db_connection():
-    """Create a cached SQLite database connection."""
-    try:
-        return sqlite3.connect(DB_FILE, check_same_thread=False)
-    except sqlite3.Error as e:
-        st.error(f"Database connection error: {str(e)}")
-        return None
-
+def get_db_connection(retries=3, delay=0.2):
+    """Get SQLite connection with retry for busy DB."""
+    for _ in range(retries):
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=5, check_same_thread=False)
+            conn.execute("PRAGMA foreign_keys = ON")
+            return conn
+        except sqlite3.OperationalError as e:
+            if "database is locked" in str(e):
+                time.sleep(delay)
+            else:
+                raise
+    raise Exception("Database connection failed after retries")
 
 # --------------------------
-# Database Initialization
+# Schema Initialization
 # --------------------------
 def init_db():
-    """Initialize database schema."""
+    """Create all required tables if they don't exist."""
     conn = get_db_connection()
-    if conn is None:
-        return
+    c = conn.cursor()
 
     try:
-        c = conn.cursor()
-
-        c.execute('''
+        c.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                mobile_email TEXT UNIQUE NOT NULL,
-                address TEXT NOT NULL,
-                verified BOOLEAN NOT NULL
+                name TEXT NOT NULL,
+                phone TEXT UNIQUE
             )
-        ''')
+        """)
 
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS items (
-                name TEXT PRIMARY KEY,
-                min_bid REAL NOT NULL,
-                market_cap REAL NOT NULL
-            )
-        ''')
-
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS bids (
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS lots (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 item_name TEXT NOT NULL,
+                quantity TEXT,
+                base_price REAL NOT NULL,
+                date_added TEXT
+            )
+        """)
+
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS bids (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
+                lot_id INTEGER NOT NULL,
                 bid_amount REAL NOT NULL,
-                timestamp DATETIME NOT NULL,
-                FOREIGN KEY(item_name) REFERENCES items(name),
-                FOREIGN KEY(user_id) REFERENCES users(id)
+                timestamp TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (lot_id) REFERENCES lots(id) ON DELETE CASCADE
             )
-        ''')
+        """)
 
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS lucky_dip (
-                item_name TEXT PRIMARY KEY,
-                user_id INTEGER,
-                bid_amount REAL,
-                FOREIGN KEY(item_name) REFERENCES items(name),
-                FOREIGN KEY(user_id) REFERENCES users(id)
-            )
-        ''')
-
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS settings (
+        # Optional meta table for version tracking
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS meta (
                 key TEXT PRIMARY KEY,
                 value TEXT
             )
-        ''')
-
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS otps (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                mobile_email TEXT NOT NULL,
-                otp TEXT NOT NULL,
-                expiration DATETIME NOT NULL
-            )
-        ''')
-
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS nutrition (
-                item_name TEXT PRIMARY KEY,
-                calories REAL,
-                fiber REAL,
-                vit_c REAL,
-                potassium REAL,
-                notes TEXT,
-                FOREIGN KEY(item_name) REFERENCES items(name)
-            )
-        ''')
+        """)
 
         conn.commit()
-    except sqlite3.Error as e:
-        st.error(f"Database initialization error: {str(e)}")
-
+    except Exception as e:
+        conn.rollback()
+        raise Exception(f"Error creating tables: {str(e)}")
+    finally:
+        conn.close()
 
 # --------------------------
-# Item Initialization
+# Insert Sample Lots
 # --------------------------
 def initialize_items():
-    """Initialize default items in the database."""
+    """Insert sample lots if table is empty."""
     conn = get_db_connection()
-    if conn is None:
-        return
+    c = conn.cursor()
 
     try:
-        c = conn.cursor()
-        c.execute("SELECT COUNT(*) FROM items")
-        if c.fetchone()[0] == 0:
+        c.execute("SELECT COUNT(*) FROM lots")
+        count = c.fetchone()[0]
+
+        if count == 0:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M")
+            sample_data = [
+                ("Mango", "10 kg", 50, now),
+                ("Banana", "20 kg", 30, now),
+                ("Papaya", "15 kg", 40, now),
+            ]
             c.executemany(
-                "INSERT INTO items (name, min_bid, market_cap) VALUES (?, ?, ?)",
-                INITIAL_ITEMS
+                """
+                INSERT INTO lots (item_name, quantity, base_price, date_added)
+                VALUES (?, ?, ?, ?)
+                """,
+                sample_data
             )
             conn.commit()
-        get_items.clear()
-    except sqlite3.Error as e:
-        st.error(f"Error initializing items: {str(e)}")
-
+    except Exception as e:
+        conn.rollback()
+        raise Exception(f"Error inserting items: {str(e)}")
+    finally:
+        conn.close()
 
 # --------------------------
-# Data Fetching Utilities
+# Utility for Clean Queries
 # --------------------------
-@st.cache_data(ttl=300)
-def get_items():
-    """Fetch list of items from database."""
+def fetch_all(query, params=()):
+    """Fetch multiple rows safely."""
     conn = get_db_connection()
-    if conn is None:
-        return []
+    c = conn.cursor()
+    c.execute(query, params)
+    rows = c.fetchall()
+    conn.close()
+    return rows
 
-    try:
-        c = conn.cursor()
-        c.execute("SELECT name FROM items")
-        return [row[0] for row in c.fetchall()]
-    except sqlite3.Error as e:
-        st.error(f"Error getting items: {str(e)}")
-        return []
-
-
-@st.cache_data(ttl=300)
-def get_min_bid(item):
-    """Get minimum bid for an item."""
+def execute_query(query, params=()):
+    """Execute INSERT/UPDATE safely."""
     conn = get_db_connection()
-    if conn is None:
-        return 0.0
-
-    try:
-        c = conn.cursor()
-        c.execute("SELECT min_bid FROM items WHERE name=?", (item,))
-        row = c.fetchone()
-        return row[0] if row else 0.0
-    except sqlite3.Error as e:
-        st.error(f"Error getting min bid: {str(e)}")
-        return 0.0
-
-
-@st.cache_data(ttl=300)
-def get_market_cap(item):
-    """Get market cap for an item."""
-    conn = get_db_connection()
-    if conn is None:
-        return 0.0
-
-    try:
-        c = conn.cursor()
-        c.execute("SELECT market_cap FROM items WHERE name=?", (item,))
-        row = c.fetchone()
-        return row[0] if row else 0.0
-    except sqlite3.Error as e:
-        st.error(f"Error getting market cap: {str(e)}")
-        return 0.0
-
-
-@st.cache_data(ttl=10)
-def get_highest_bid(item):
-    """Get highest bid for an item."""
-    conn = get_db_connection()
-    if conn is None:
-        return get_min_bid(item)
-
-    try:
-        c = conn.cursor()
-        c.execute("SELECT MAX(bid_amount) FROM bids WHERE item_name=?", (item,))
-        row = c.fetchone()
-        return row[0] if row[0] is not None else get_min_bid(item)
-    except sqlite3.Error as e:
-        st.error(f"Error getting highest bid: {str(e)}")
-        return get_min_bid(item)
-
-
-@st.cache_data(ttl=60)
-def get_billing_rate(item):
-    """Get billing rate for an item."""
-    return float(get_setting(f'billing_{item}', 0.0))
-
-
-@st.cache_data(ttl=300)
-def get_user_id(mobile_email):
-    """Get user ID from mobile or email."""
-    conn = get_db_connection()
-    if conn is None:
-        return None
-
-    try:
-        c = conn.cursor()
-        c.execute("SELECT id FROM users WHERE mobile_email=?", (mobile_email,))
-        row = c.fetchone()
-        return row[0] if row else None
-    except sqlite3.Error as e:
-        st.error(f"Error getting user ID: {str(e)}")
-        return None
-
-
-@st.cache_data(ttl=60)
-def get_setting(key, default=None):
-    """Get a setting from the database."""
-    conn = get_db_connection()
-    if conn is None:
-        return default
-
-    try:
-        c = conn.cursor()
-        c.execute("SELECT value FROM settings WHERE key=?", (key,))
-        row = c.fetchone()
-        return row[0] if row else default
-    except sqlite3.Error as e:
-        st.error(f"Error getting setting: {str(e)}")
-        return default
-
-
-def set_setting(key, value):
-    """Set a setting in the database."""
-    conn = get_db_connection()
-    if conn is None:
-        return
-
-    try:
-        c = conn.cursor()
-        c.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-            (key, str(value))
-        )
-        conn.commit()
-        get_setting.clear()
-    except sqlite3.Error as e:
-        st.error(f"Error setting value: {str(e)}")
+    c = conn.cursor()
+    c.execute(query, params)
+    conn.commit()
+    conn.close()
