@@ -1,5 +1,5 @@
 import streamlit as st
-from pages.components.sidebar import render_sidebar
+from FruitBidApp.pages.components.sidebar import render_sidebar
 
 st.set_page_config(page_title="FruitBid Dashboard", page_icon="🍇", layout="wide")
 
