@@ -213,12 +213,12 @@ __marimo__/
 # Ignore macOS system files
 .DS_Store
 
-# Ignore Streamlit local folders
-.streamlit/
+
+
 
 # Ignore backup or temp scripts
 *_backup.py
 
 # Ignore virtual environment
 venv/
-FruitBidApp/.streamlit/secrets.toml
+
